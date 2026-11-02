@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aethelgard RPG — Système</title>
+    <style>
+        body {
+            background-color: #0f141c;
+            color: #ffffff;
+            font-family: monospace;
+            padding: 15px;
+            margin: 0;
+            user-select: none;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00ffcc;
+            text-align: center;
+            font-size: 1.1rem;
+            border-bottom: 2px dashed #00ffcc;
+            padding-bottom: 12px;
+            margin-top: 10px;
+        }
+        .card {
+            background-color: #161f2e;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+        .title-section {
+            color: #ffcc00;
+            font-weight: bold;
+            margin-top: 12px;
+            margin-bottom: 6px;
+        }
+        .stat-line {
+            color: #d1d5db;
+            margin: 5px 0;
+        }
+        .divider {
+            border-top: 1px dashed #374151;
+            margin: 12px 0;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 6px;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+        .btn-fire { background-color: #cc3333; color: white; }
+        .btn-hunt { background-color: #d97706; color: white; }
+        .btn-food { background-color: #228b22; color: white; }
+        .btn-turn { background-color: #00ffcc; color: black; }
+        .routine-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .btn-routine {
+            flex: 1;
+            background-color: #2a3547;
+            color: #a0aec0;
+            padding: 12px;
+            border: 1px solid #3d4d65;
+            border-radius: 6px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .btn-routine.active {
+            background-color: #1f2937;
+            color: #00ffcc;
+            border: 1px solid #00ffcc;
+        }
+        .status-stable { color: #00ff00; font-weight: bold; }
+        .status-warn { color: #ffcc00; font-weight: bold; }
+        .status-danger { color: #ff3333; font-weight: bold; }
+        .log-box {
+            background-color: #070a0f;
+            border: 1px solid #1e293b;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 0.85rem;
+            color: #38bdf8;
+            min-height: 40px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>FENÊTRE DE STATUT — SYSTEM v4.0</h1>
+
+    <div class="card">
+        <div class="stat-line">NOM : <span id="lbl-name">Alistair</span> | ACTIVITÉ : <span id="lbl-routine" style="color:#00ffcc;">REPOS</span></div>
+        <div class="stat-line">STATUT : <span id="lbl-status" class="status-stable">STABLE</span></div>
+        <div class="stat-line">NIVEAU : <span id="lbl-level" style="color:#a855f7; font-weight:bold;">1</span> (XP: <span id="lbl-xp">0</span>/100)</div>
+        
+        <div class="divider"></div>
+        
+        <div class="title-section">STATISTIQUES PHYSIQUES :</div>
+        <div class="stat-line">├─ FORCE : <span id="val-force">12.00</span>/100</div>
+        <div class="stat-line">├─ GLUCOSE : <span id="val-glucose">110.0</span> mg/dL</div>
+        <div class="stat-line">├─ TEMPÉRATURE : <span id="val-temp">36.4</span> °C</div>
+        <div class="stat-line">└─ CONTRAINTE MAG. : <span id="val-mana">4.0</span> %</div>
+        
+        <div class="divider"></div>
+        
+        <div class="stat-line" style="font-size: 1.1rem;">FORTUNE : <span id="val-gold" style="color:#ffd700; font-weight:bold;">150.0</span> PO</div>
+    </div>
+
+    <div id="combat-log" class="log-box">Système initialisé. Prêt pour l'aventure.</div>
+
+    <button class="btn btn-fire" onclick="lancerMagie()">🔥 SORT : FLÈCHE THERMIQUE</button>
+    <button class="btn btn-hunt" onclick="partirChasser()">🐺 CHASSER DANS LES BOIS</button>
+    <button class="btn btn-food" onclick="mangerNourriture()">🍖 ACHETER DES RATIONS (15 PO)</button>
+    <button class="btn btn-turn" onclick="passerTour()">⏳ AVANCER LE TEMPS (APPLIQUER LA ROUTINE)</button>
+
+    <div class="routine-container">
+        <button id="btn-routine-repos" class="btn-routine active" onclick="changerRoutine('REPOS')">💤 MODE REPOS</button>
+        <button id="btn-routine-minage" class="btn-routine" onclick="changerRoutine('MINAGE')">⛏️ MODE MINAGE</button>
+    </div>
+</div>
+
+<script>
+    let state = {
+        name: "Alistair",
+        level: 1,
+        xp: 0,
+        force: 12.0,
+        glucose: 110.0,
+        temperature: 36.4,
+        contrainte: 4.0,
+        gold: 150.0,
+        statut: "STABLE",
+        routine: "REPOS"
+    };
+
+    function chargerPartie() {
+        const sauvegarde = localStorage.getItem("aethelgard_web_save");
+        if (sauvegarde) { state = JSON.parse(sauvegarde); }
+        rafrachirInterface();
+    }
+
+    function sauvegarderPartie() {
+        localStorage.setItem("aethelgard_web_save", JSON.stringify(state));
+    }
+
+    function log(message) {
+        document.getElementById("combat-log").innerText = message;
+    }
+
+    function rafrachirInterface() {
+        document.getElementById("lbl-routine").innerText = state.routine;
+        document.getElementById("lbl-level").innerText = state.level;
+        document.getElementById("lbl-xp").innerText = Math.floor(state.xp);
+        document.getElementById("val-force").innerText = state.force.toFixed(2);
+        document.getElementById("val-glucose").innerText = state.glucose.toFixed(1);
+        document.getElementById("val-temp").innerText = state.temperature.toFixed(1);
+        document.getElementById("val-mana").innerText = state.contrainte.toFixed(1);
+        document.getElementById("val-gold").innerText = state.gold.toFixed(1);
+        
+        const statusEl = document.getElementById("lbl-status");
+        statusEl.innerText = state.statut;
+        statusEl.className = ""; 
+        if (state.statut === "STABLE") statusEl.classList.add("status-stable");
+        else if (["FATIGUÉ", "FAMINE", "BLESSÉ"].includes(state.statut)) statusEl.classList.add("status-warn");
+        else statusEl.classList.add("status-danger");
+
+        document.getElementById("btn-routine-repos").classList.toggle("active", state.routine === "REPOS");
+        document.getElementById("btn-routine-minage").classList.toggle("active", state.routine === "MINAGE");
+    }
+
+    function gagnerXp(montant) {
+        state.xp += montant;
+        if (state.xp >= 100) {
+            state.level += 1;
+            state.xp -= 100;
+            state.force += 1.0;
+            log(`🎉 PASSAGE DE NIVEAU ! Vous êtes niveau ${state.level}. Votre force augmente !`);
+        }
+    }
+
+    function changerRoutine(nouvelleRoutine) {
+        state.routine = nouvelleRoutine;
+        log(`Routine changée : vous êtes maintenant en mode ${nouvelleRoutine}.`);
+        sauvegarderPartie();
+        rafrachirInterface();
+    }
+
+    function lancerMagie() {
+        if (state.glucose < 40) {
+            log("❌ Échec : Glucose trop bas pour la conversion magique !");
+            return;
+        }
+        state.glucose -= 25.0;
+        state.temperature -= 0.8;
+        state.contrainte += 20.0;
+        
+        log("🔥 Flèche thermique lancée ! Votre température chute à cause du coût biologique.");
+        if (state.contrainte > 75.0) { state.statut = "BRÛLURE INTERNE"; }
+        gagnerXp(15);
+        sauvegarderPartie();
+        rafrachirInterface();
+    }
+
+    function partirChasser() {
+        if (state.glucose < 30) {
+            log("❌ Trop faible pour chasser. Reposez-vous ou mangez d'abord.");
+            return;
+        }
+        state.glucose -= 15.0;
+        if (Math.random() > 0.4) {
+            let butin = Math.floor(Math.random() * 25) + 10;
+            state.gold += butin;
+            log(`🐺 Loup abattu ! Vous revendez sa fourrure pour ${butin} PO.`);
+            gagnerXp(25);
+        } else {
+            state.statut = "BLESSÉ";
+            log("🩸 Le loup a contre-attaqué ! Vous fuyez, blessé au bras.");
+        }
+        sauvegarderPartie();
+        rafrachirInterface();
+    }
+
+    function mangerNourriture() {
+        if (state.gold < 15.0) {
+            log("❌ Rations trop chères (15 PO requises).");
+            return;
+        }
+        state.gold -= 15.0;
+        state.glucose = Math.min(140.0, state.glucose + 40.0);
+        if (state.statut === "FAMINE") state.statut = "STABLE";
+        log("🍖 Rations consommées. Le niveau de glucose remonte.");
+        sauvegarderPartie();
+        rafrachirInterface();
+    }
+
+    function passerTour() {
+        state.contrainte = Math.max(0.0, state.contrainte - 3.0);
+        if (state.statut === "BLESSÉ" && state.routine === "REPOS") state.statut = "STABLE";
+
+        if (state.routine === "REPOS") {
+            state.glucose = Math.max(0.0, state.glucose - 3.0);
+            state.temperature = Math.min(36.6, state.temperature + 0.1);
+            log("⏳ Vous vous reposez à l'auberge. La fatigue et les contraintes diminuent.");
+            if (state.glucose < 40) state.statut = "FAMINE";
+        } else if (state.routine === "MINAGE") {
+            state.glucose = Math.max(0.0, state.glucose - 12.0);
+            if (state.glucose > 20) {
+                state.gold += 25.0;
+                state.force += 0.05;
+                state.statut = "FATIGUÉ";
+                log("⛏️ Vous piochez dur dans les mines. +25 PO accumulées.");
+                gagnerXp(10);
+            } else {
